@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SPI単語帳">
+<title>SPI単語帳</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+:root {
+  --ink:#1a1410; --paper:#f7f3ec; --warm:#e8dfd0; --border:#d4c9b8; --muted:#8a7968;
+  --red:#c0392b; --red-bg:#fdf0ee; --green:#27ae60; --green-bg:#edfaf3;
+  --blue:#2980b9; --blue-bg:#eaf4fd; --orange:#e67e22; --orange-bg:#fef4e8;
+  --shadow:rgba(60,40,20,0.13);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--paper);color:var(--ink);
+  display:flex;flex-direction:column;min-height:100dvh;
+  padding-bottom:env(safe-area-inset-bottom,0px);user-select:none;-webkit-user-select:none}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.active{display:flex}
+
+/* ── HEADER ── */
+header{background:var(--ink);color:var(--paper);padding:14px 16px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  display:flex;align-items:center;gap:10px;flex-shrink:0}
+header h1{font-family:'Noto Serif JP',serif;font-size:.95rem;font-weight:700;letter-spacing:.06em;flex:1}
+.hbtn{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--paper);
+  padding:5px 10px;border-radius:6px;font-size:.72rem;cursor:pointer;white-space:nowrap}
+.hbtn:active{background:rgba(255,255,255,.15)}
+.progress-bar{height:3px;background:var(--warm);flex-shrink:0}
+.progress-fill{height:100%;background:var(--red);transition:width .35s ease}
+
+/* ── HOME SCREEN ── */
+.home-body{flex:1;overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat-box{background:#fff;border:1.5px solid var(--border);border-radius:12px;
+  padding:14px 10px;text-align:center}
+.stat-num{font-family:'Noto Serif JP',serif;font-size:1.6rem;font-weight:700;line-height:1}
+.stat-lbl{font-size:.68rem;color:var(--muted);margin-top:4px}
+.stat-box.s-total .stat-num{color:var(--ink)}
+.stat-box.s-mastered .stat-num{color:var(--green)}
+.stat-box.s-weak .stat-num{color:var(--red)}
+
+.section-title{font-size:.72rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-top:4px}
+
+.mode-list{display:flex;flex-direction:column;gap:10px}
+.mode-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;
+  padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;
+  transition:transform .1s,box-shadow .1s}
+.mode-card:active{transform:scale(.97);box-shadow:0 2px 8px var(--shadow)}
+.mode-icon{font-size:1.6rem;flex-shrink:0}
+.mode-info{flex:1}
+.mode-title{font-weight:700;font-size:.95rem}
+.mode-desc{font-size:.72rem;color:var(--muted);margin-top:2px}
+.mode-badge{font-size:.7rem;padding:3px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+.badge-all{background:var(--warm);color:var(--muted)}
+.badge-weak{background:var(--red-bg);color:var(--red)}
+.badge-master{background:var(--green-bg);color:var(--green)}
+
+.accuracy-bar-wrap{background:var(--warm);border-radius:8px;height:8px;overflow:hidden;margin-top:6px}
+.accuracy-bar{height:100%;background:var(--green);border-radius:8px;transition:width .5s ease}
+
+/* ── CARD SCREEN ── */
+.card-header{background:var(--ink);color:var(--paper);padding:10px 16px;
+  padding-top:max(10px,env(safe-area-inset-top));
+  display:flex;align-items:center;gap:10px;flex-shrink:0}
+.back-btn{background:transparent;border:none;color:var(--paper);font-size:1.1rem;
+  padding:4px 8px;cursor:pointer;line-height:1}
+.card-header-info{flex:1;text-align:center}
+.card-mode-label{font-size:.68rem;color:rgba(255,255,255,.6);letter-spacing:.08em}
+.card-counter{font-size:.82rem;font-variant-numeric:tabular-nums}
+.card-mastered-ct{font-size:.72rem;color:var(--green)}
+
+.card-progress-bar{height:3px;background:rgba(255,255,255,.15);flex-shrink:0}
+.card-progress-fill{height:100%;background:var(--green);transition:width .35s ease}
+
+.card-main{flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:16px 18px 12px;gap:12px;overflow:hidden}
+
+.card-wrap{width:100%;max-width:480px;flex:1;min-height:0;position:relative}
+.card{width:100%;height:100%;min-height:180px;position:relative;
+  transform-style:preserve-3d;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}
+.card.flipped{transform:rotateY(180deg)}
+
+.swipe-overlay{position:absolute;inset:0;border-radius:16px;pointer-events:none;
+  opacity:0;z-index:10;display:flex;align-items:center;justify-content:center;font-size:2.2rem}
+.swipe-overlay.right{background:rgba(39,174,96,.18)}
+.swipe-overlay.left{background:rgba(192,57,43,.1)}
+
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border-radius:16px;border:1.5px solid var(--border);background:#fff;
+  box-shadow:0 4px 20px var(--shadow);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 20px 44px;gap:8px;overflow:hidden}
+.face.back{transform:rotateY(180deg);background:var(--red-bg);border-color:#e0b0aa}
+.card.mastered .face.front{border-color:var(--green);background:var(--green-bg)}
+.card.weak .face.front{border-color:var(--orange);background:var(--orange-bg)}
+
+.face-label{position:absolute;top:12px;left:16px;font-size:.62rem;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.face-badge{position:absolute;top:10px;right:12px;font-size:1rem;opacity:0;transition:opacity .3s}
+.card.mastered .face-badge{opacity:1}
+.card.weak .face-badge{opacity:1}
+
+.phrase{font-family:'Noto Serif JP',serif;font-size:clamp(1.1rem,5vw,1.5rem);
+  line-height:1.9;text-align:center}
+.phrase ruby.rk{color:var(--red);font-weight:700}
+.phrase ruby.rk rt{color:var(--red);font-size:.52em}
+.meaning{font-size:clamp(.92rem,3.5vw,1.05rem);line-height:1.8;text-align:center}
+
+.tap-hint{position:absolute;bottom:12px;font-size:.62rem;color:var(--muted);
+  display:flex;align-items:center;gap:4px}
+
+/* answer buttons */
+.answer-row{width:100%;max-width:480px;display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;flex-shrink:0}
+.answer-row.hidden{visibility:hidden}
+.ans-btn{padding:13px;border:none;border-radius:12px;font-family:'Noto Sans JP',sans-serif;
+  font-size:.88rem;font-weight:700;cursor:pointer;transition:transform .1s,opacity .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.ans-btn:active{transform:scale(.95)}
+.ans-btn.correct{background:var(--green);color:#fff}
+.ans-btn.wrong{background:var(--red);color:#fff}
+
+/* swipe guide */
+.swipe-guide{width:100%;max-width:480px;display:flex;justify-content:space-between;
+  align-items:center;flex-shrink:0}
+.guide-item{display:flex;align-items:center;gap:4px;font-size:.65rem;color:var(--muted)}
+.guide-item.green{color:var(--green)}
+
+/* nav */
+.nav{width:100%;max-width:480px;display:grid;grid-template-columns:1fr auto 1fr;
+  gap:10px;flex-shrink:0}
+.btn{padding:13px 10px;border:none;border-radius:10px;font-family:'Noto Sans JP',sans-serif;
+  font-size:.85rem;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.95)}
+.btn:disabled{opacity:.3;pointer-events:none}
+.btn-prev{background:var(--warm);color:var(--ink)}
+.btn-next{background:var(--ink);color:var(--paper)}
+.btn-shuffle{background:transparent;border:1.5px solid var(--border);color:var(--muted);
+  padding:10px 12px;border-radius:10px;font-size:.7rem;cursor:pointer;
+  display:flex;align-items:center;gap:4px;white-space:nowrap}
+.btn-shuffle:active{background:var(--warm)}
+
+/* toast */
+.toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%) translateY(20px);
+  background:#333;color:#fff;padding:9px 18px;border-radius:20px;
+  font-size:.82rem;opacity:0;transition:opacity .25s,transform .25s;
+  pointer-events:none;white-space:nowrap;z-index:200}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.green{background:var(--green)}
+.toast.orange{background:var(--orange)}
+
+/* finish overlay */
+.finish{position:fixed;inset:0;background:rgba(26,20,16,.85);
+  display:none;align-items:center;justify-content:center;z-index:300;padding:24px}
+.finish.show{display:flex}
+.finish-box{background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center}
+.finish-emoji{font-size:3rem;margin-bottom:12px}
+.finish-title{font-family:'Noto Serif JP',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px}
+.finish-sub{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.7}
+.finish-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.fstat{background:var(--paper);border-radius:10px;padding:12px;text-align:center}
+.fstat-num{font-size:1.4rem;font-weight:700}
+.fstat-lbl{font-size:.68rem;color:var(--muted);margin-top:2px}
+.finish-btns{display:flex;flex-direction:column;gap:8px}
+.finish-btn{padding:13px;border:none;border-radius:10px;font-family:'Noto Sans JP',sans-serif;
+  font-size:.9rem;font-weight:700;cursor:pointer}
+.finish-btn.primary{background:var(--ink);color:#fff}
+.finish-btn.secondary{background:var(--warm);color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- ══ HOME SCREEN ══ -->
+<div class="screen active" id="screenHome">
+  <header>
+    <h1>📖 SPI 単語帳</h1>
+  </header>
+  <div class="progress-bar"><div class="progress-fill" id="homeProgress" style="width:0%"></div></div>
+  <div class="home-body">
+    <div class="stats-row">
+      <div class="stat-box s-total">
+        <div class="stat-num" id="statTotal">210</div>
+        <div class="stat-lbl">全カード</div>
+      </div>
+      <div class="stat-box s-mastered">
+        <div class="stat-num" id="statMastered">0</div>
+        <div class="stat-lbl">✅ 覚えた</div>
+      </div>
+      <div class="stat-box s-weak">
+        <div class="stat-num" id="statWeak">0</div>
+        <div class="stat-lbl">🔥 苦手</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="accuracy-bar-wrap">
+        <div class="accuracy-bar" id="homeAccBar" style="width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px">
+        <span style="font-size:.68rem;color:var(--muted)">正答率</span>
+        <span style="font-size:.68rem;color:var(--green);font-weight:700" id="homeAccPct">—</span>
+      </div>
+    </div>
+
+    <div class="section-title">練習モードを選ぶ</div>
+    <div class="mode-list">
+      <div class="mode-card" onclick="startMode('all')">
+        <div class="mode-icon">📚</div>
+        <div class="mode-info">
+          <div class="mode-title">全カード</div>
+          <div class="mode-desc">210枚すべてを練習</div>
+        </div>
+        <div class="mode-badge badge-all" id="badgeAll">210枚</div>
+      </div>
+      <div class="mode-card" onclick="startMode('unknown')">
+        <div class="mode-icon">🎯</div>
+        <div class="mode-info">
+          <div class="mode-title">未習得のみ</div>
+          <div class="mode-desc">覚えたカードを除いて練習</div>
+        </div>
+        <div class="mode-badge badge-all" id="badgeUnknown">210枚</div>
+      </div>
+      <div class="mode-card" onclick="startMode('weak')">
+        <div class="mode-icon">🔥</div>
+        <div class="mode-info">
+          <div class="mode-title">苦手カード集中</div>
+          <div class="mode-desc">不正解が多いカードを優先</div>
+        </div>
+        <div class="mode-badge badge-weak" id="badgeWeak">0枚</div>
+      </div>
+      <div class="mode-card" onclick="startMode('mastered')">
+        <div class="mode-icon">✅</div>
+        <div class="mode-info">
+          <div class="mode-title">覚えたカード確認</div>
+          <div class="mode-desc">マーク済みカードを復習</div>
+        </div>
+        <div class="mode-badge badge-master" id="badgeMastered">0枚</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CARD SCREEN ══ -->
+<div class="screen" id="screenCard">
+  <div class="card-header">
+    <button class="back-btn" onclick="goHome()">‹</button>
+    <div class="card-header-info">
+      <div class="card-mode-label" id="modeLabel">全カード</div>
+      <div class="card-counter" id="cardCounter">1 / 210</div>
+    </div>
+    <div class="card-mastered-ct" id="cardMasteredCt"></div>
+  </div>
+  <div class="card-progress-bar"><div class="card-progress-fill" id="cardProg" style="width:0%"></div></div>
+
+  <div class="card-main">
+    <div class="card-wrap" id="cardWrap">
+      <div class="swipe-overlay right" id="overlayRight">←</div>
+      <div class="swipe-overlay left"  id="overlayLeft">→</div>
+      <div class="card" id="card">
+        <div class="face front">
+          <span class="face-label">語句</span>
+          <span class="face-badge" id="faceBadge">✅</span>
+          <div class="phrase" id="frontHTML"></div>
+          <div class="tap-hint">タップして意味を確認</div>
+        </div>
+        <div class="face back">
+          <span class="face-label">意味</span>
+          <div class="phrase" id="backPhrase" style="font-size:clamp(.95rem,4vw,1.2rem);margin-bottom:4px;opacity:.7"></div>
+          <div class="meaning" id="backText"></div>
+          <div class="tap-hint">○か✗で次へ進む</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- answer buttons (shown after flip) -->
+    <div class="answer-row hidden" id="answerRow">
+      <button class="ans-btn wrong" onclick="recordAnswer(false)">✗ 不正解</button>
+      <button class="ans-btn correct" onclick="recordAnswer(true)">○ 正解</button>
+    </div>
+
+    <div class="swipe-guide">
+      <div class="guide-item">← 右スワイプで前へ</div>
+      <div class="guide-item">左スワイプで次へ →</div>
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-prev" id="prevBtn" onclick="go(-1)">← 前へ</button>
+      <button class="btn-shuffle" onclick="doShuffle()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        シャッフル
+      </button>
+      <button class="btn btn-next" id="nextBtn" onclick="go(1)">次へ →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- finish overlay -->
+<div class="finish" id="finish">
+  <div class="finish-box">
+    <div class="finish-emoji" id="finishEmoji">🎉</div>
+    <div class="finish-title" id="finishTitle">お疲れ様！</div>
+    <div class="finish-sub" id="finishSub"></div>
+    <div class="finish-stats">
+      <div class="fstat"><div class="fstat-num" id="fCorrect" style="color:var(--green)">0</div><div class="fstat-lbl">正解</div></div>
+      <div class="fstat"><div class="fstat-num" id="fWrong" style="color:var(--red)">0</div><div class="fstat-lbl">不正解</div></div>
+      <div class="fstat"><div class="fstat-num" id="fAcc" style="color:var(--blue)">—</div><div class="fstat-lbl">正答率</div></div>
+      <div class="fstat"><div class="fstat-num" id="fMastered" style="color:var(--green)">0</div><div class="fstat-lbl">覚えた数</div></div>
+    </div>
+    <div class="finish-btns">
+      <button class="finish-btn primary" onclick="retryWrong()">🔥 不正解だけもう一度</button>
+      <button class="finish-btn secondary" onclick="goHome()">ホームに戻る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CARDS = [{"h": "<ruby class=\"rk\">照準<rt>しょうじゅん</rt></ruby>を合わせる", "m": "ねらいを定めること"}, {"h": "人権を<ruby class=\"rk\">蹂躪<rt>じゅうりん</rt></ruby>する", "m": "踏みにじったり侵害したりすること"}, {"h": "思わず<ruby class=\"rk\">苦笑<rt>くしょう</rt></ruby>する", "m": "怒りや不快感を持ちながらしかたなく笑うこと"}, {"h": "<ruby class=\"rk\">悠長<rt>ゆうちょう</rt></ruby>に構えている", "m": "急を要するのに、急ごうとしない様子"}, {"h": "博覧<ruby class=\"rk\">強記<rt>きょうき</rt></ruby>に驚かされる", "m": "記憶力が優れていること"}, {"h": "派閥の<ruby class=\"rk\">領袖<rt>りょうしゅう</rt></ruby>", "m": "ある集団を率いる人物"}, {"h": "<ruby class=\"rk\">垂涎<rt>すいぜん</rt></ruby>の的", "m": "ある物をしきりに欲しがること"}, {"h": "<ruby class=\"rk\">刮目<rt>かつもく</rt></ruby>に値する", "m": "目をこすってよく見ること"}, {"h": "デパートの<ruby class=\"rk\">催事<rt>さいじ</rt></ruby>", "m": "特別に行われるもよおし"}, {"h": "<ruby class=\"rk\">気鋭<rt>きえい</rt></ruby>の評論家", "m": "意気込みが鋭いこと"}, {"h": "悪い噂が<ruby class=\"rk\">流布<rt>るふ</rt></ruby>した", "m": "世に広まること。広く知れ渡ること"}, {"h": "彼の勇気に<ruby class=\"rk\">驚嘆<rt>きょうたん</rt></ruby>する", "m": "ひどく感心すること"}, {"h": "師として<ruby class=\"rk\">心服<rt>しんぷく</rt></ruby>する", "m": "心から尊敬して従うこと"}, {"h": "<ruby class=\"rk\">敷衍<rt>ふえん</rt></ruby>して説明する", "m": "言葉を加えてわかりやすく説明すること"}, {"h": "<ruby class=\"rk\">進取<rt>しんしゅ</rt></ruby>の精神⇔墨守", "m": "自ら進んで新しいことをすること"}, {"h": "<ruby class=\"rk\">卓見<rt>たっけん</rt></ruby>を述べる", "m": "優れた意見"}, {"h": "法案の作成に<ruby class=\"rk\">参画<rt>さんかく</rt></ruby>する", "m": "計画段階から参加すること"}, {"h": "<ruby class=\"rk\">克明<rt>こくめい</rt></ruby>な記録をつける", "m": "細かいところまで念を入れて手落ちのないこと"}, {"h": "二党が<ruby class=\"rk\">鎬<rt>しのぎ</rt></ruby>を削る", "m": "「鎬を削る」で「激しく争う」"}, {"h": "<ruby class=\"rk\">鳩首<rt>きゅうしゅ</rt></ruby>協議をする", "m": "人々が集まって額を寄せ合い相談すること"}, {"h": "社会の<ruby class=\"rk\">木鐸<rt>ぼくたく</rt></ruby>", "m": "世の人を教え導く人。指導者"}, {"h": "<ruby class=\"rk\">陥穽<rt>かんせい</rt></ruby>にはまる", "m": "人をおとしいれるはかりごと。落とし穴"}, {"h": "<ruby class=\"rk\">義憤<rt>ぎふん</rt></ruby>にかられる", "m": "不正なことにいきどおること"}, {"h": "青春を<ruby class=\"rk\">謳歌<rt>おうか</rt></ruby>する", "m": "恵まれた境遇を大いに楽しみ、表現すること"}, {"h": "決算を<ruby class=\"rk\">粉飾<rt>ふんしょく</rt></ruby>する", "m": "立派に見えようとしてうわべを飾ること"}, {"h": "<ruby class=\"rk\">因習<rt>いんしゅう</rt></ruby>を打ち破る", "m": "古くから伝えられている風習"}, {"h": "寛仁<ruby class=\"rk\">大度<rt>たいど</rt></ruby>", "m": "度量の大きいこと。寛仁は「寛大で慈悲深い」"}, {"h": "<ruby class=\"rk\">言下<rt>げんか</rt></ruby>に否定する", "m": "言い終わるか終わらない時。即座"}, {"h": "<ruby class=\"rk\">居丈高<rt>いたけだか</rt></ruby>な態度に出た", "m": "人を威圧するような態度"}, {"h": "前任者の方針を<ruby class=\"rk\">踏襲<rt>とうしゅう</rt></ruby>する", "m": "それまでのやり方をそのまま引き継ぐこと"}, {"h": "戯曲の<ruby class=\"rk\">梗概<rt>こうがい</rt></ruby>を話す", "m": "あらすじ"}, {"h": "<ruby class=\"rk\">瞠目<rt>どうもく</rt></ruby>すべき活躍", "m": "驚いたり感心したりして目をみはること"}, {"h": "<ruby class=\"rk\">保身<rt>ほしん</rt></ruby>に走る", "m": "自分の地位や名声などの安全をはかること"}, {"h": "悪鬼が<ruby class=\"rk\">跳梁<rt>ちょうりょう</rt></ruby>する", "m": "勝手にはねまわること。悪がのさばること"}, {"h": "契約を<ruby class=\"rk\">履行<rt>りこう</rt></ruby>する", "m": "約束されたことなどを実際に行うこと"}, {"h": "<ruby class=\"rk\">安閑<rt>あんかん</rt></ruby>としていられない", "m": "安らかで静かなさま"}, {"h": "夏目漱石に<ruby class=\"rk\">私淑<rt>ししゅく</rt></ruby>する", "m": "ひそかに尊敬し、師と仰ぐこと"}, {"h": "<ruby class=\"rk\">高尚<rt>こうしょう</rt></ruby>な趣味をもつ⇔低俗", "m": "学問・言行などの程度が高く上品なこと"}, {"h": "士気を<ruby class=\"rk\">鼓舞<rt>こぶ</rt></ruby>する", "m": "励まして奮い立たせること"}, {"h": "<ruby class=\"rk\">即妙<rt>そくみょう</rt></ruby>な受け答え", "m": "気がきいていること。「当意即妙」"}, {"h": "<ruby class=\"rk\">崇高<rt>すうこう</rt></ruby>な理想を抱く", "m": "気高く尊いさま"}, {"h": "官庁に<ruby class=\"rk\">出仕<rt>しゅっし</rt></ruby>する", "m": "役所などに勤めること。官職につくこと"}, {"h": "<ruby class=\"rk\">射幸<rt>しゃこう</rt></ruby>心をあおる", "m": "偶然の利益や成功を当てにすること"}, {"h": "汚職が<ruby class=\"rk\">蔓延<rt>まんえん</rt></ruby>している", "m": "好ましくないことがはびこること"}, {"h": "新社屋が<ruby class=\"rk\">落成<rt>らくせい</rt></ruby>する", "m": "工事が完了して建築物などができあがること"}, {"h": "<ruby class=\"rk\">言外<rt>げんがい</rt></ruby>ににおわせる", "m": "直接は言葉に出さない部分"}, {"h": "<ruby class=\"rk\">膠着<rt>こうちゃく</rt></ruby>した状態", "m": "ある状態に固定して進展しないこと"}, {"h": "<ruby class=\"rk\">言質<rt>げんち</rt></ruby>をとる", "m": "後で証拠となる言葉"}, {"h": "<ruby class=\"rk\">博覧<rt>はくらん</rt></ruby>に供する", "m": "広く一般の人が見ること"}, {"h": "実現しようと<ruby class=\"rk\">画策<rt>かくさく</rt></ruby>する", "m": "考えて実行すること"}, {"h": "<ruby class=\"rk\">慇懃<rt>いんぎん</rt></ruby>に答える", "m": "礼儀正しいこと"}, {"h": "<ruby class=\"rk\">果断<rt>かだん</rt></ruby>な対応が功を奏した", "m": "ためらわずに思い切って行うさま"}, {"h": "<ruby class=\"rk\">慧眼<rt>けいがん</rt></ruby>の士", "m": "物事の本質を見抜く、優れた眼力"}, {"h": "自らの言動を<ruby class=\"rk\">省察<rt>せいさつ</rt></ruby>する", "m": "自身を反省して考えること"}, {"h": "<ruby class=\"rk\">嘆息<rt>たんそく</rt></ruby>をもらす", "m": "なげいて、ため息をつくこと"}, {"h": "照明に<ruby class=\"rk\">意匠<rt>いしょう</rt></ruby>を凝らす", "m": "工夫をめぐらすこと"}, {"h": "時代の風潮に<ruby class=\"rk\">迎合<rt>げいごう</rt></ruby>する", "m": "相手に調子を合わせること。こびを売ること"}, {"h": "条件を<ruby class=\"rk\">具備<rt>ぐび</rt></ruby>した立地", "m": "十分に備えていること"}, {"h": "師の教えを<ruby class=\"rk\">銘記<rt>めいき</rt></ruby>する", "m": "心に刻み込むこと"}, {"h": "<ruby class=\"rk\">断腸<rt>だんちょう</rt></ruby>の思いで手放す", "m": "非常に辛いこと"}, {"h": "神話に<ruby class=\"rk\">仮託<rt>かたく</rt></ruby>して語る", "m": "他の物を借りて言い表す。かこつける"}, {"h": "海外に<ruby class=\"rk\">雄飛<rt>ゆうひ</rt></ruby>する⇔雌伏", "m": "勢い盛んに活動すること"}, {"h": "<ruby class=\"rk\">晦日<rt>みそか</rt></ruby>前で忙しい", "m": "月の最後の日"}, {"h": "相手に<ruby class=\"rk\">斟酌<rt>しんしゃく</rt></ruby>する", "m": "相手の事情や心情などをくみとること"}, {"h": "真意を<ruby class=\"rk\">忖度<rt>そんたく</rt></ruby>する", "m": "相手の心中をおしはかること"}, {"h": "<ruby class=\"rk\">不埒<rt>ふらち</rt></ruby>な振る舞い", "m": "道理にはずれていて、けしからぬこと"}, {"h": "世界の平和を<ruby class=\"rk\">庶幾<rt>しょき</rt></ruby>する", "m": "心から願うこと。強く希望すること"}, {"h": "意見が<ruby class=\"rk\">笑殺<rt>しょうさつ</rt></ruby>された", "m": "問題にしないこと。一笑に付すこと"}, {"h": "勢力が<ruby class=\"rk\">拮抗<rt>きっこう</rt></ruby>する", "m": "力がほぼ等しくて優劣のないこと"}, {"h": "<ruby class=\"rk\">先達<rt>せんだつ</rt></ruby>に学ぼう", "m": "先にその分野に進んで他を導く人"}, {"h": "部下を<ruby class=\"rk\">督励<rt>とくれい</rt></ruby>する", "m": "監督し励ますこと。指図して元気づけること"}, {"h": "<ruby class=\"rk\">超然<rt>ちょうぜん</rt></ruby>とした態度", "m": "俗事にこだわらず、ゆうゆうとしているさま"}, {"h": "<ruby class=\"rk\">杜撰<rt>ずさん</rt></ruby>な工事", "m": "いい加減。手抜き。おざなり"}, {"h": "<ruby class=\"rk\">円熟<rt>えんじゅく</rt></ruby>の境地", "m": "十分に熟達して豊かな内容をもつこと"}, {"h": "<ruby class=\"rk\">老成<rt>ろうせい</rt></ruby>した文章", "m": "経験を積んで、円熟すること"}, {"h": "<ruby class=\"rk\">詭弁<rt>きべん</rt></ruby>を弄する＝こじつけ", "m": "道理に合わない弁論"}, {"h": "けだし<ruby class=\"rk\">至言<rt>しげん</rt></ruby>といえよう", "m": "的を射た言葉。本質を突いた言葉"}, {"h": "<ruby class=\"rk\">適宜<rt>てきぎ</rt></ruby>対処する", "m": "その場の状況に合っていること"}, {"h": "<ruby class=\"rk\">僭越<rt>せんえつ</rt></ruby>な言い方ですが", "m": "さしでがましいこと。出過ぎたこと"}, {"h": "君の<ruby class=\"rk\">裁量<rt>さいりょう</rt></ruby>に任せる", "m": "本人の考えで判断、処理すること"}, {"h": "戦う<ruby class=\"rk\">気概<rt>きがい</rt></ruby>を示す", "m": "困難に負けない強い気性・意志"}, {"h": "<ruby class=\"rk\">希有<rt>けう</rt></ruby>な出来事＝希代", "m": "めったにないこと"}, {"h": "人格を<ruby class=\"rk\">陶冶<rt>とうや</rt></ruby>する", "m": "性質や能力を円満に鍛え育てること"}, {"h": "逡巡する間に機会を逃す", "m": "決断できずにぐずぐずすること"}, {"h": "景気回復の<ruby class=\"rk\">証左<rt>しょうさ</rt></ruby>である", "m": "証拠。あかし"}, {"h": "<ruby class=\"rk\">気丈<rt>きじょう</rt></ruby>に振る舞う", "m": "気持ちがしっかりしていること"}, {"h": "<ruby class=\"rk\">早晩<rt>そうばん</rt></ruby>政権を取るだろう", "m": "いずれ。遅かれ早かれ。近い将来"}, {"h": "座敷に<ruby class=\"rk\">幇間<rt>ほうかん</rt></ruby>を呼ぶ", "m": "太鼓持ち。客の機嫌をとって場を盛り上げる職業"}, {"h": "<ruby class=\"rk\">暁通<rt>ぎょうつう</rt></ruby>する＝精通、通暁", "m": "すみずみまで詳しく知っていること"}, {"h": "<ruby class=\"rk\">姑息<rt>こそく</rt></ruby>な手段", "m": "その場しのぎの間に合わせ"}, {"h": "<ruby class=\"rk\">営営<rt>えいえい</rt></ruby>と仕事に励む", "m": "こつこつと励むさま。せっせと働く様子"}, {"h": "名利に<ruby class=\"rk\">恬淡<rt>てんたん</rt></ruby>な人物", "m": "欲がなくあっさりしているさま"}, {"h": "自由<ruby class=\"rk\">闊達<rt>かったつ</rt></ruby>な社風", "m": "度量が広く小事にこだわらないさま"}, {"h": "競走馬として<ruby class=\"rk\">馴致<rt>じゅんち</rt></ruby>する", "m": "なれさせること。なじませること"}, {"h": "<ruby class=\"rk\">卓越<rt>たくえつ</rt></ruby>した技術", "m": "他よりはるかに優れていること"}, {"h": "徳性の<ruby class=\"rk\">涵養<rt>かんよう</rt></ruby>を図る", "m": "水がしみこむように徐々に教え養うこと"}, {"h": "文化が東へと<ruby class=\"rk\">伝播<rt>でんぱ</rt></ruby>する", "m": "伝わり広がっていくこと"}, {"h": "<ruby class=\"rk\">煌煌<rt>こうこう</rt></ruby>と星が輝く", "m": "光り輝くさま"}, {"h": "情報元を<ruby class=\"rk\">秘匿<rt>ひとく</rt></ruby>する", "m": "秘密にして隠しておくこと"}, {"h": "<ruby class=\"rk\">奢侈<rt>しゃし</rt></ruby>にふける", "m": "過度のぜいたく。身分不相応なぜいたく"}, {"h": "<ruby class=\"rk\">杞憂<rt>きゆう</rt></ruby>にすぎない", "m": "無用の心配。取り越し苦労"}, {"h": "<ruby class=\"rk\">法外<rt>ほうがい</rt></ruby>な要求", "m": "並外れていて普通の程度をこえていること"}, {"h": "<ruby class=\"rk\">滔滔<rt>とうとう</rt></ruby>と意見を述べる", "m": "次から次へとよどみなく話すさま"}, {"h": "<ruby class=\"rk\">蜿蜿<rt>えんえん</rt></ruby>と続く山並み", "m": "うねうねと長く続くさま"}, {"h": "意思の<ruby class=\"rk\">疎通<rt>そつう</rt></ruby>を図る", "m": "意思や考えが支障なく相手に通じること"}, {"h": "思うところを<ruby class=\"rk\">直言<rt>ちょくげん</rt></ruby>する", "m": "自分の考え、信念を遠慮せず言うこと"}, {"h": "社長に<ruby class=\"rk\">進言<rt>しんげん</rt></ruby>する＝具申", "m": "上位の者に意見を申し述べること"}, {"h": "文章を<ruby class=\"rk\">咀嚼<rt>そしゃく</rt></ruby>する", "m": "内容をよく考えて十分に理解し味わうこと"}, {"h": "<ruby class=\"rk\">歴然<rt>れきぜん</rt></ruby>とした事実＝歴歴", "m": "はっきりとして明白なさま"}, {"h": "<ruby class=\"rk\">恭順<rt>きょうじゅん</rt></ruby>の意を表する", "m": "つつしんで命令などに従うこと"}, {"h": "計画の<ruby class=\"rk\">大綱<rt>たいこう</rt></ruby>", "m": "事柄の根本。おおもと。大づかみの内容"}, {"h": "事業が<ruby class=\"rk\">蹉跌<rt>さてつ</rt></ruby>する", "m": "物事がうまくいかず、しくじること。失敗"}, {"h": "収穫量の<ruby class=\"rk\">逓減<rt>ていげん</rt></ruby>＝漸減", "m": "だんだん少なくなること"}, {"h": "<ruby class=\"rk\">閨秀<rt>けいしゅう</rt></ruby>作家", "m": "学問や芸術などに優れた女性"}, {"h": "<ruby class=\"rk\">意表<rt>いひょう</rt></ruby>を突く＝意外", "m": "まったく考えてもいないこと"}, {"h": "<ruby class=\"rk\">軋轢<rt>あつれき</rt></ruby>が生じる＝不和", "m": "仲が悪くなること"}, {"h": "<ruby class=\"rk\">労<rt>ろう</rt></ruby>をねぎらう", "m": "苦労・努力。ほねおり"}, {"h": "<ruby class=\"rk\">典拠<rt>てんきょ</rt></ruby>を脚注に示す", "m": "よりどころとなる文献。引用した資料"}, {"h": "国の<ruby class=\"rk\">枢軸<rt>すうじく</rt></ruby>にいる＝枢要", "m": "物事の中心となる重要な部分"}, {"h": "美術界の<ruby class=\"rk\">泰斗<rt>たいと</rt></ruby>=大家", "m": "その道で最も権威のある人"}, {"h": "兄に<ruby class=\"rk\">比肩<rt>ひけん</rt></ruby>する＝匹敵", "m": "同等のものとして並ぶこと。伍すること"}, {"h": "創作に<ruby class=\"rk\">傾注<rt>けいちゅう</rt></ruby>する＝没頭", "m": "集中して取り組むこと"}, {"h": "<ruby class=\"rk\">懸案<rt>けんあん</rt></ruby>事項", "m": "問題になっていながら解決がつかない事柄"}, {"h": "<ruby class=\"rk\">宥和<rt>ゆうわ</rt></ruby>政策", "m": "対立する相手をゆるし、仲よくすること"}, {"h": "敵から<ruby class=\"rk\">遁走<rt>とんそう</rt></ruby>する", "m": "逃げ出すこと"}, {"h": "人の話を<ruby class=\"rk\">虚心<rt>きょしん</rt></ruby>に聞く", "m": "先入観を持たない、すなおな態度"}, {"h": "<ruby class=\"rk\">中原<rt>ちゅうげん</rt></ruby>を制する⇔辺境", "m": "天下の中央。中心の地"}, {"h": "定理から<ruby class=\"rk\">演繹<rt>えんえき</rt></ruby>する⇔帰納", "m": "一般論から、個別のものを推論、説明すること"}, {"h": "<ruby class=\"rk\">知遇<rt>ちぐう</rt></ruby>を得る", "m": "力を認められて厚く待遇されること"}, {"h": "発言が<ruby class=\"rk\">失笑<rt>しっしょう</rt></ruby>を買った", "m": "思わず笑ってしまうこと"}, {"h": "<ruby class=\"rk\">斯界<rt>しかい</rt></ruby>の権威", "m": "この分野。この専門の方面"}, {"h": "小説を<ruby class=\"rk\">耽読<rt>たんどく</rt></ruby>する", "m": "夢中になって読むこと。読みふけること"}, {"h": "計画を<ruby class=\"rk\">着着<rt>ちゃくちゃく</rt></ruby>と進める", "m": "物事が予定通り順調に進むさま"}, {"h": "<ruby class=\"rk\">諸般<rt>しょはん</rt></ruby>の事情により", "m": "さまざま。いろいろ"}, {"h": "這般の情勢を鑑みる", "m": "これら。この辺。このたび"}, {"h": "話が<ruby class=\"rk\">佳境<rt>かきょう</rt></ruby>に入る", "m": "物事の面白くなったところ。興味深い場面"}, {"h": "<ruby class=\"rk\">気脈<rt>きみゃく</rt></ruby>を通ずる", "m": "連絡。気持ちのつながり"}, {"h": "政治資金を<ruby class=\"rk\">隠匿<rt>いんとく</rt></ruby>する", "m": "人に見つからないようにかくすこと"}, {"h": "部下を<ruby class=\"rk\">増長<rt>ぞうちょう</rt></ruby>させるな", "m": "だんだんいい気になってつけ上がること"}, {"h": "東西貿易の<ruby class=\"rk\">咽喉<rt>いんこう</rt></ruby>", "m": "のど。転じて、重要な通路"}, {"h": "昨年を<ruby class=\"rk\">回視<rt>かいし</rt></ruby>する＝回顧", "m": "過去をふりかえってみること"}, {"h": "<ruby class=\"rk\">看過<rt>かんか</rt></ruby>できない大問題", "m": "見逃すこと。見過ごすこと"}, {"h": "悪巧みを<ruby class=\"rk\">看破<rt>かんぱ</rt></ruby>する", "m": "真相などを見破ること。見抜くこと"}, {"h": "相手の意向を<ruby class=\"rk\">打診<rt>だしん</rt></ruby>する", "m": "相手の反応を見るために事前に伝えること"}, {"h": "民主主義を<ruby class=\"rk\">標榜<rt>ひょうぼう</rt></ruby>する", "m": "主義・主張などを公然と表すこと"}, {"h": "異民族を<ruby class=\"rk\">排斥<rt>はいせき</rt></ruby>する", "m": "好ましくないとして拒み退けること"}, {"h": "公私を<ruby class=\"rk\">峻別<rt>しゅんべつ</rt></ruby>する", "m": "厳しく区別すること"}, {"h": "手柄を<ruby class=\"rk\">吹聴<rt>ふいちょう</rt></ruby>する", "m": "言いふらすこと。言い広めること"}, {"h": "<ruby class=\"rk\">寡聞<rt>かぶん</rt></ruby>にして存じません", "m": "見聞が狭くて知識をもたないこと"}, {"h": "人間<ruby class=\"rk\">辛抱<rt>しんぼう</rt></ruby>が肝要だ", "m": "非常に大切なこと"}, {"h": "文明の<ruby class=\"rk\">消長<rt>しょうちょう</rt></ruby>", "m": "衰えたり栄えたりすること"}, {"h": "<ruby class=\"rk\">遜色<rt>そんしょく</rt></ruby>ない出来映え＝<ruby class=\"rk\">遜色<rt>そんしょく</rt></ruby>ない", "m": "見劣り。「遜色ない」で「見劣りしない」"}, {"h": "<ruby class=\"rk\">卑近<rt>ひきん</rt></ruby>な例を挙げる", "m": "身近でありふれていること"}, {"h": "人気取りに<ruby class=\"rk\">腐心<rt>ふしん</rt></ruby>する", "m": "事を成し遂げようと心を痛め悩ますこと"}, {"h": "武器を<ruby class=\"rk\">内内<rt>ないない</rt></ruby>に調達する", "m": "こっそり。うちわ。内密"}, {"h": "<ruby class=\"rk\">憐憫<rt>れんびん</rt></ruby>の情を抱く", "m": "かわいそうに思うこと"}, {"h": "歌舞伎に<ruby class=\"rk\">造詣<rt>ぞうけい</rt></ruby>が深い", "m": "その分野についての深い知識や優れた技量"}, {"h": "あまりの暑さに<ruby class=\"rk\">閉口<rt>へいこう</rt></ruby>する", "m": "手に負えなくて困ること"}, {"h": "広く<ruby class=\"rk\">喧伝<rt>けんでん</rt></ruby>された事件", "m": "言いふらして広く知らせること"}, {"h": "<ruby class=\"rk\">漸次<rt>ぜんじ</rt></ruby>増加する", "m": "だんだん。次第に。「漸」は「次第に」"}, {"h": "<ruby class=\"rk\">漸進<rt>ぜんしん</rt></ruby>的な改革⇔急進", "m": "だんだん、少しずつ進むこと"}, {"h": "オリンピックを<ruby class=\"rk\">招致<rt>しょうち</rt></ruby>する", "m": "招き寄せること"}, {"h": "<ruby class=\"rk\">委細<rt>いさい</rt></ruby>かまわずに行う", "m": "こまかく詳しいこと。物事の詳しい事情"}, {"h": "<ruby class=\"rk\">英気<rt>えいき</rt></ruby>を養う＝活力", "m": "何かをしようとする元気。優れた才気"}, {"h": "<ruby class=\"rk\">市井<rt>しせい</rt></ruby>の人", "m": "人家が集まっている所。ちまた"}, {"h": "本心を<ruby class=\"rk\">披瀝<rt>ひれき</rt></ruby>する", "m": "気持ちなどを隠さずすべて打ち明けること"}, {"h": "正体が<ruby class=\"rk\">露呈<rt>ろてい</rt></ruby>する", "m": "隠れていた事実、真相が表に出ること"}, {"h": "<ruby class=\"rk\">謬見<rt>びゅうけん</rt></ruby>を正す", "m": "誤った意見、考え。「謬」は「あやまり」"}, {"h": "<ruby class=\"rk\">出色<rt>しゅっしょく</rt></ruby>の出来映え", "m": "他より目立って優れていること"}, {"h": "<ruby class=\"rk\">異彩<rt>いさい</rt></ruby>を放つ", "m": "普通とは異なっていて目立つ様子"}, {"h": "両者の案を<ruby class=\"rk\">折衷<rt>せっちゅう</rt></ruby>する", "m": "それぞれのよいところをとって一つに合わせること"}, {"h": "金を<ruby class=\"rk\">折半<rt>せっぱん</rt></ruby>する＝山分け", "m": "二等分にすること。半分に分けること"}, {"h": "損得を<ruby class=\"rk\">度外視<rt>どがいし</rt></ruby>する", "m": "まったく問題にしないこと。無視すること"}, {"h": "おしゃべりに<ruby class=\"rk\">辟易<rt>へきえき</rt></ruby>する", "m": "うんざりして嫌になること"}, {"h": "パンデミックを<ruby class=\"rk\">予見<rt>よけん</rt></ruby>する", "m": "前もって見通すこと"}, {"h": "<ruby class=\"rk\">畏敬<rt>いけい</rt></ruby>の念をもつ", "m": "かしこまりうやまうこと"}, {"h": "<ruby class=\"rk\">研鑽<rt>けんさん</rt></ruby>を積む", "m": "学問などを深く究めること"}, {"h": "解散は<ruby class=\"rk\">必至<rt>ひっし</rt></ruby>である", "m": "そうなることが避けられないこと"}, {"h": "上役の<ruby class=\"rk\">逆鱗<rt>げきりん</rt></ruby>にふれる", "m": "目上の人の怒り"}, {"h": "<ruby class=\"rk\">緊迫<rt>きんぱく</rt></ruby>した情勢", "m": "きびしくさしせまること"}, {"h": "<ruby class=\"rk\">僥倖<rt>ぎょうこう</rt></ruby>に恵まれた＝幸甚", "m": "思いがけない幸運。偶然に得る幸い"}, {"h": "<ruby class=\"rk\">隘路<rt>あいろ</rt></ruby>を切り開く", "m": "狭くて困難な道。進行の妨げとなるもの"}, {"h": "<ruby class=\"rk\">愁眉<rt>しゅうび</rt></ruby>を開く", "m": "心配そうな顔。うれいを含んだまゆ"}, {"h": "<ruby class=\"rk\">焦眉<rt>しょうび</rt></ruby>の急", "m": "眉が焦げるほどの火の接近。切迫した危険"}, {"h": "部下を<ruby class=\"rk\">一瞥<rt>いちべつ</rt></ruby>する", "m": "ちらっと見ること"}, {"h": "師の<ruby class=\"rk\">薫陶<rt>くんとう</rt></ruby>を受ける", "m": "人徳で人を感化してよい方に導くこと"}, {"h": "ご<ruby class=\"rk\">随意<rt>ずいい</rt></ruby>にどうぞ＝任意", "m": "制限を受けず自分の思うままであること"}, {"h": "<ruby class=\"rk\">恣意<rt>しい</rt></ruby>的な解釈", "m": "自分の思うまま。自分勝手な考え"}, {"h": "家庭の<ruby class=\"rk\">桎梏<rt>しっこく</rt></ruby>を逃れる", "m": "手かせ足かせ。自由を束縛するもの"}, {"h": "軽妙<ruby class=\"rk\">洒脱<rt>しゃだつ</rt></ruby>な文章", "m": "気取りなくさっぱりと洗練されているさま"}, {"h": "意見が<ruby class=\"rk\">収斂<rt>しゅうれん</rt></ruby>される", "m": "同質、同等にまとまること。縮むこと"}, {"h": "運河を<ruby class=\"rk\">浚渫<rt>しゅんせつ</rt></ruby>する", "m": "海底・河床などの土砂を掘削すること"}, {"h": "事の<ruby class=\"rk\">子細<rt>しさい</rt></ruby>を述べる", "m": "物事の詳しい事情"}, {"h": "<ruby class=\"rk\">粗忽<rt>そこつ</rt></ruby>な振る舞い", "m": "軽はずみでそそっかしいこと"}, {"h": "<ruby class=\"rk\">齟齬<rt>そご</rt></ruby>が生じる", "m": "事柄がくいちがって合わないこと"}, {"h": "方針について<ruby class=\"rk\">詮議<rt>せんぎ</rt></ruby>する", "m": "話し合って物事を明らかにすること"}, {"h": "失敗を<ruby class=\"rk\">糊塗<rt>こと</rt></ruby>する", "m": "一時しのぎにごまかして取り繕うこと"}, {"h": "官庁に<ruby class=\"rk\">奉職<rt>ほうしょく</rt></ruby>する", "m": "公の職務につくこと"}, {"h": "敵対勢力を<ruby class=\"rk\">懐柔<rt>かいじゅう</rt></ruby>する", "m": "うまく手なずけてこちらに従わせること"}, {"h": "甘い言葉で<ruby class=\"rk\">籠絡<rt>ろうらく</rt></ruby>する", "m": "まるめこんで思い通りにあやつること"}, {"h": "御無事で何より<ruby class=\"rk\">重畳<rt>ちょうじょう</rt></ruby>", "m": "(良い事が)重なること。大変喜ばしいこと"}, {"h": "解決の<ruby class=\"rk\">端緒<rt>たんしょ</rt></ruby>を開く", "m": "いとぐち。手がかり"}, {"h": "先例に<ruby class=\"rk\">依拠<rt>いきょ</rt></ruby>する", "m": "よりどころとすること"}, {"h": "計画が<ruby class=\"rk\">頓挫<rt>とんざ</rt></ruby>する", "m": "進行が急にくじけること。「頓」は「急に」"}, {"h": "<ruby class=\"rk\">獰悪<rt>どうあく</rt></ruby>な形相におびえる", "m": "性質や姿が凶悪で荒々しいこと"}, {"h": "<ruby class=\"rk\">角<rt>かど</rt></ruby>を立てる", "m": "言動・性格が円満でないこと"}, {"h": "<ruby class=\"rk\">識見<rt>しきけん</rt></ruby>のある人", "m": "物事を正しく判断する力"}, {"h": "勝って<ruby class=\"rk\">溜飲<rt>りゅういん</rt></ruby>を下げる", "m": "胸のつかえ。「溜飲を下げる」で気を晴らす"}, {"h": "2人の証言が<ruby class=\"rk\">符合<rt>ふごう</rt></ruby>する", "m": "2つ以上の事柄がぴったりと一致すること"}, {"h": "<ruby class=\"rk\">猜疑<rt>さいぎ</rt></ruby>の目を向ける", "m": "何か裏があるのではないかと疑うこと"}];
+
+// ── state ──
+const mastered = new Set();   // indices into CARDS that are mastered
+const wrong    = new Set();   // indices that were answered wrong (in current session)
+const stats    = {};          // stats[i] = { correct: n, wrong: n }
+
+let deck = [];       // current deck (array of CARDS indices)
+let idx  = 0;
+let flipped = false;
+let currentMode = 'all';
+let sessionCorrect = 0, sessionWrong = 0;
+
+// ── util ──
+function origIdx(i) { return CARDS.indexOf(deck[i]); }
+
+function showToast(msg, cls='') {
+  const t = document.getElementById('toast');
+  t.className = 'toast ' + cls;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── home ──
+function updateHome() {
+  const mCount = mastered.size;
+  const wCount = Object.keys(stats).filter(i => {
+    const s = stats[i]; return s && s.wrong > s.correct;
+  }).length;
+
+  document.getElementById('statMastered').textContent = mCount;
+  document.getElementById('statWeak').textContent = wCount;
+
+  const unknownCount = CARDS.length - mCount;
+  document.getElementById('badgeAll').textContent = CARDS.length + '枚';
+  document.getElementById('badgeUnknown').textContent = Math.max(unknownCount,0) + '枚';
+  document.getElementById('badgeWeak').textContent = wCount + '枚';
+  document.getElementById('badgeMastered').textContent = mCount + '枚';
+
+  const totalAnswered = Object.values(stats).reduce((a,s)=>a+s.correct+s.wrong,0);
+  const totalCorrect  = Object.values(stats).reduce((a,s)=>a+s.correct,0);
+  const acc = totalAnswered ? Math.round(totalCorrect/totalAnswered*100) : null;
+  document.getElementById('homeAccPct').textContent = acc !== null ? acc + '%' : '—';
+  document.getElementById('homeAccBar').style.width = acc !== null ? acc + '%' : '0%';
+  document.getElementById('homeProgress').style.width = CARDS.length ? (mCount/CARDS.length*100) + '%' : '0%';
+}
+
+function goHome() {
+  document.getElementById('screenHome').classList.add('active');
+  document.getElementById('screenCard').classList.remove('active');
+  document.getElementById('finish').classList.remove('show');
+  updateHome();
+}
+
+// ── mode start ──
+function startMode(mode) {
+  currentMode = mode;
+  sessionCorrect = 0; sessionWrong = 0;
+
+  let indices = [];
+  if (mode === 'all') {
+    indices = CARDS.map((_,i)=>i);
+  } else if (mode === 'unknown') {
+    // 未習得 かつ 苦手（不正解多い）を除外
+    indices = CARDS.map((_,i)=>i).filter(i => {
+      if (mastered.has(i)) return false;
+      const s = stats[i];
+      if (s && s.wrong > s.correct) return false;
+      return true;
+    });
+    if (!indices.length) { showToast('対象カードがありません！'); return; }
+  } else if (mode === 'weak') {
+    indices = CARDS.map((_,i)=>i).filter(i => {
+      const s = stats[i]; return s && s.wrong > s.correct;
+    });
+    if (!indices.length) { showToast('苦手カードがまだありません'); return; }
+  } else if (mode === 'mastered') {
+    indices = [...mastered];
+    if (!indices.length) { showToast('まだ覚えたカードがありません'); return; }
+  }
+
+  deck = indices.map(i => CARDS[i]);
+
+  const labels = {all:'全カード',unknown:'未習得のみ',weak:'🔥 苦手集中',mastered:'✅ 覚えた確認'};
+  document.getElementById('modeLabel').textContent = labels[mode] || '';
+
+  // 未習得モードは前回の続きから
+  if (mode === 'unknown') {
+    const saved = parseInt(localStorage.getItem('spi_unknown_idx') || '0');
+    idx = Math.min(saved, deck.length - 1);
+  } else {
+    idx = 0;
+  }
+  document.getElementById('screenHome').classList.remove('active');
+  document.getElementById('screenCard').classList.add('active');
+  show();
+}
+
+// ── card show ──
+function show() {
+  flipped = false;
+  const cardEl = document.getElementById('card');
+  cardEl.classList.remove('flipped');
+  document.getElementById('answerRow').classList.add('hidden');
+
+  const c = deck[idx];
+  const oi = CARDS.indexOf(c);
+  const s  = stats[oi] || {correct:0,wrong:0};
+
+  document.getElementById('frontHTML').innerHTML = c.h;
+  document.getElementById('backPhrase').innerHTML = c.h;
+  document.getElementById('backText').textContent = c.m;
+  document.getElementById('cardCounter').textContent = `${idx+1} / ${deck.length}`;
+  document.getElementById('cardProg').style.width = `${(idx+1)/deck.length*100}%`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === deck.length-1;
+
+  const isMastered = mastered.has(oi);
+  const isWeak = s.wrong > s.correct && (s.correct+s.wrong) > 0;
+  cardEl.classList.toggle('mastered', isMastered);
+  cardEl.classList.toggle('weak', !isMastered && isWeak);
+
+  const badge = document.getElementById('faceBadge');
+  badge.textContent = isMastered ? '✅' : (isWeak ? '🔥' : '');
+
+  const mCt = mastered.size;
+  document.getElementById('cardMasteredCt').textContent = mCt > 0 ? `✅${mCt}` : '';
+}
+
+let answered = false;
+
+function flip() {
+  if (flipped) return;
+  flipped = true;
+  document.getElementById('card').classList.add('flipped');
+  document.getElementById('answerRow').classList.remove('hidden');
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
+}
+
+function go(d) {
+  if (d > 0 && flipped && !answered) {
+    showToast('○か✗を押してください');
+    return;
+  }
+  const next = idx + d;
+  if (next < 0 || next >= deck.length) return;
+  answered = false;
+  idx = next;
+  show();
+}
+
+function doShuffle() {
+  for (let i=deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+  idx=0; show();
+  showToast('シャッフルしました');
+}
+
+// ── answer recording ──
+function recordAnswer(correct) {
+  if (answered) return;
+  answered = true;
+  const oi = CARDS.indexOf(deck[idx]);
+  if (!stats[oi]) stats[oi] = {correct:0, wrong:0};
+
+  if (correct) {
+    stats[oi].correct++;
+    sessionCorrect++;
+    mastered.add(oi);
+    showToast('○ 正解！✅', 'green');
+  } else {
+    stats[oi].wrong++;
+    sessionWrong++;
+    wrong.add(oi);
+    showToast('✗ 不正解', 'orange');
+  }
+
+  saveData();
+
+  // disable answer buttons to prevent double tap
+  document.querySelectorAll('.ans-btn').forEach(b => b.disabled = true);
+
+  setTimeout(() => {
+    document.querySelectorAll('.ans-btn').forEach(b => b.disabled = false);
+    answered = false;
+    if (idx < deck.length - 1) {
+      idx++;
+      if (currentMode === 'unknown') localStorage.setItem('spi_unknown_idx', idx);
+      show();
+    } else {
+      if (currentMode === 'unknown') localStorage.setItem('spi_unknown_idx', 0);
+      showFinish();
+    }
+  }, 800);
+}
+
+// ── mastered toggle ──
+function toggleMastered() {
+  const oi = CARDS.indexOf(deck[idx]);
+  if (mastered.has(oi)) {
+    mastered.delete(oi);
+    showToast('マークを外しました');
+  } else {
+    mastered.add(oi);
+    showToast('✅ 覚えた！', 'green');
+  }
+  const cardEl = document.getElementById('card');
+  cardEl.classList.toggle('mastered', mastered.has(oi));
+  document.getElementById('faceBadge').textContent = mastered.has(oi) ? '✅' : '';
+  document.getElementById('cardMasteredCt').textContent = mastered.size > 0 ? `✅${mastered.size}` : '';
+  saveData();
+}
+
+// ── finish screen ──
+function showFinish() {
+  const total = sessionCorrect + sessionWrong;
+  const acc = total ? Math.round(sessionCorrect/total*100) : null;
+  const emoji = acc === null ? '🎉' : acc >= 80 ? '🏆' : acc >= 50 ? '👍' : '💪';
+
+  document.getElementById('finishEmoji').textContent = emoji;
+  document.getElementById('finishTitle').textContent = 'セッション完了！';
+  document.getElementById('finishSub').textContent =
+    `${deck.length}枚を学習しました。\n不正解カードは苦手リストに追加されます。`;
+  document.getElementById('fCorrect').textContent = sessionCorrect;
+  document.getElementById('fWrong').textContent = sessionWrong;
+  document.getElementById('fAcc').textContent = acc !== null ? acc + '%' : '—';
+  document.getElementById('fMastered').textContent = mastered.size;
+
+  document.getElementById('finish').classList.add('show');
+}
+
+function retryWrong() {
+  const wrongDeck = [...wrong].map(i => CARDS[i]);
+  if (!wrongDeck.length) { showToast('不正解カードはありません'); return; }
+  document.getElementById('finish').classList.remove('show');
+  wrong.clear();
+  sessionCorrect = 0; sessionWrong = 0;
+  deck = wrongDeck;
+  idx = 0;
+  document.getElementById('modeLabel').textContent = '🔥 不正解リトライ';
+  show();
+}
+
+// ── touch ──
+const cWrap = document.getElementById('cardWrap');
+let tx=0, ty=0, tt=0, dragging=false;
+
+cWrap.addEventListener('touchstart', e=>{
+  tx=e.touches[0].clientX; ty=e.touches[0].clientY; tt=Date.now(); dragging=false;
+},{passive:true});
+
+cWrap.addEventListener('touchmove', e=>{
+  const dx=e.touches[0].clientX-tx, dy=e.touches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>8){
+    dragging=true;
+  }
+},{passive:true});
+
+cWrap.addEventListener('touchend', e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  const dt=Date.now()-tt;
+  if(dragging){
+    if(dx>60)       go(-1);
+    else if(dx<-60) go(1);
+  } else if(dt<350 && Math.abs(dx)<15 && Math.abs(dy)<15){
+    flip();
+  }
+  dragging=false;
+},{passive:true});
+
+// keyboard
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft') go(-1);
+  else if(e.key==='ArrowRight') go(1);
+  else if(e.key===' '){e.preventDefault();flip();}
+
+  else if(e.key==='1') recordAnswer(true);
+  else if(e.key==='2') recordAnswer(false);
+});
+
+// ── save / load ──
+function saveData() {
+  try {
+    localStorage.setItem('spi_mastered', JSON.stringify([...mastered]));
+    localStorage.setItem('spi_stats', JSON.stringify(stats));
+  } catch(e) {}
+}
+
+function loadData() {
+  try {
+    const m = localStorage.getItem('spi_mastered');
+    if (m) JSON.parse(m).forEach(i => mastered.add(i));
+    const s = localStorage.getItem('spi_stats');
+    if (s) Object.assign(stats, JSON.parse(s));
+  } catch(e) {}
+}
+
+loadData();
+updateHome();
+</script>
+</body>
+</html>
